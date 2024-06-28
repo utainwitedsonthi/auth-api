@@ -1,25 +1,25 @@
-# Use the Bun base image
-FROM oven/bun:latest
+# Use the node base image
+FROM node:18
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy package.json and bun.lockb to the working directory
+# Copy package.json to the working directory
 COPY package.json .
-COPY bun.lockb .
 
 # Install dependencies using Bun
-RUN bun install
-RUN bun add -D prisma
+RUN npm install
+RUN npm install ts-node
+RUN npm install -D prisma
 
 # Copy the rest of the application code
 COPY . .
 
 # Generate Prisma Client
-RUN bun prisma generate
+RUN npx prisma generate
 
 # Run Prisma migrate to apply schema changes
-RUN bun prisma migrate dev --name init
+RUN npx prisma migrate dev --name init
 
 # Command to start your application
-CMD ["bun", "index.ts"]
+CMD ["ts-node", "index.ts"]
