@@ -1,4 +1,4 @@
-FROM oven/bun:latest
+FROM oven/bun:latest as build
 
 WORKDIR /app
 
@@ -7,10 +7,7 @@ COPY bun.lockb .
 COPY prisma prisma
 
 RUN bun install
-RUN bun add -D prisma
 
 COPY . .
-RUN bunx prisma generate
-
 
 CMD bun index.ts
