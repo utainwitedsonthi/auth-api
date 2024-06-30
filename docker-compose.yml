@@ -11,3 +11,10 @@ services:
       - .env
     ports:
       - '8000:8000'
+    networks:
+      - sp_network
+
+networks:
+  sp_network:
+    external: true
+    name: sp_network

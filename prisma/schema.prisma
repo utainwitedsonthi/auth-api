@@ -10,8 +10,38 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  username String @unique
+  id       Int       @id @default(autoincrement())
+  uuid     String    @unique
+  email    String    @unique
+  username String    @unique
   password String
   salt     String
+  name     String
+  task     Task[]
+  history  History[]
+}
+
+model Task {
+  id        Int      @id @default(autoincrement())
+  uuid      String
+  user      User     @relation(fields: [uuid], references: [uuid])
+  title     String
+  url       String
+  amount    Int
+  schedule  DateTime
+  status    Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model History {
+  id          Int      @id @default(autoincrement())
+  uuid        String
+  user        User     @relation(fields: [uuid], references: [uuid])
+  title       String
+  url         String
+  amount      Int
+  schedule    DateTime
+  statusOrder Boolean
+  createdAt   DateTime @default(now())
 }

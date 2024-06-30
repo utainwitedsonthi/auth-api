@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { PrismaClient } from '../generated/prisma-client'
+import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
@@ -7,23 +8,35 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 interface AuthProps {
+  email: string
   username: string
   password: string
+}
+
+interface ProfileProps extends AuthProps {
+  name: string
 }
 
 const prisma = new PrismaClient()
 const secretKey = process.env.SECRET_KEY as string
 
 export const register = async (req: Request, res: Response): Promise<void> => {
-  const { username, password }: AuthProps = req.body
+  const { email, username, password, name }: ProfileProps = req.body
   try {
-    if (!username || !password) {
-      res.status(400).json({ error: 'Username or Password are required' })
+    if (!username && !email) {
+      res.status(400).json({ error: 'Username or Email is required' })
       return
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { username },
+    if (!password) {
+      res.status(400).json({ error: 'Password is required' })
+      return
+    }
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ username: username }, { email: email }],
+      },
     })
 
     if (existingUser) {
@@ -36,8 +49,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const newUser = await prisma.user.create({
       data: {
-        username,
+        uuid: uuidv4(),
+        email: email,
+        username: username,
         password: hashedPassword,
+        name: name,
         salt,
       },
     })
@@ -50,11 +66,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 }
 
 export const login = async (req: Request, res: Response): Promise<void> => {
-  const { username, password }: AuthProps = req.body
+  const { email, username, password }: AuthProps = req.body
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { username },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ username: username }, { email: email }],
+      },
     })
 
     if (!user) {
@@ -69,7 +87,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    const token = generateAccessToken(user.id, user.username)
+    const token = generateAccessToken(user.id, user.email, user.username)
 
     res.status(200).json({ token })
   } catch (error) {
@@ -91,7 +109,7 @@ export const refreshToken = async (
     }
     jwt.verify(refreshToken, secretKey, (err: any, user: any) => {
       if (err) return res.sendStatus(403)
-      const token = generateAccessToken(user.id, user.username)
+      const token = generateAccessToken(user.id, user.email, user.username)
       res.json({ token })
     })
   } catch (error) {
@@ -100,8 +118,8 @@ export const refreshToken = async (
   }
 }
 
-const generateAccessToken = (id: number, username: string) => {
-  return jwt.sign({ id: id, username: username }, secretKey, {
+const generateAccessToken = (id: number, email: string, username: string) => {
+  return jwt.sign({ id: id, email: email, username: username }, secretKey, {
     expiresIn: '15m',
   })
 }
